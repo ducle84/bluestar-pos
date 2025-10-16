@@ -2120,6 +2120,20 @@ class _ServiceOrderPageState extends State<ServiceOrderPage> {
           },
         ),
         const SizedBox(height: 8),
+        // Add New Customer button
+        Center(
+          child: OutlinedButton.icon(
+            onPressed: () =>
+                _showAddNewCustomerDialog(orderProvider, catalogProvider),
+            icon: const Icon(Icons.person_add),
+            label: const Text('Add New Customer'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.blue,
+              side: BorderSide(color: Colors.blue.shade300),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         // Selected customer display with loyalty points
         if (orderProvider.selectedCustomer != null)
           Container(
@@ -2149,11 +2163,10 @@ class _ServiceOrderPageState extends State<ServiceOrderPage> {
                           'Phone: ${orderProvider.selectedCustomer!.phone}',
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
-                      if (orderProvider.selectedCustomer!.birthday != null)
-                        Text(
-                          'Birthday: ${orderProvider.selectedCustomer!.birthday} 🎂',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
+                      Text(
+                        'Birthday: ${orderProvider.selectedCustomer!.birthday} 🎂',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
                     ],
                   ),
                 ),
@@ -2370,6 +2383,209 @@ class _ServiceOrderPageState extends State<ServiceOrderPage> {
             child: const Text('Cancel'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showAddNewCustomerDialog(
+    ServiceOrderProvider orderProvider,
+    CatalogProvider catalogProvider,
+  ) {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final emailController = TextEditingController();
+    DateTime? selectedBirthday;
+    bool birthdayTouched = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Add New Customer'),
+          content: SizedBox(
+            width: 400,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Customer Name *',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person),
+                      hintText: 'First Last',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Customer name is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone Number *',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.phone),
+                      hintText: 'e.g., (555) 123-4567',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Phone number is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email (Optional)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
+                      hintText: 'customer@email.com',
+                    ),
+                    validator: (value) {
+                      if (value != null &&
+                          value.isNotEmpty &&
+                          !value.contains('@')) {
+                        return 'Please enter a valid email address';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: () async {
+                      setState(() {
+                        birthdayTouched = true;
+                      });
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(1900),
+                        lastDate: DateTime.now(),
+                      );
+                      if (date != null) {
+                        setState(() {
+                          selectedBirthday = date;
+                        });
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Birthday *',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.cake),
+                        errorText: birthdayTouched && selectedBirthday == null
+                            ? 'Birthday is required'
+                            : null,
+                      ),
+                      child: Text(
+                        selectedBirthday != null
+                            ? '${selectedBirthday!.month}/${selectedBirthday!.day}'
+                            : 'Tap to select birthday',
+                        style: TextStyle(
+                          color: selectedBirthday != null
+                              ? Colors.black87
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState!.validate() &&
+                    selectedBirthday != null) {
+                  try {
+                    // Parse first and last name
+                    final nameParts = nameController.text.trim().split(' ');
+                    final firstName = nameParts.isNotEmpty
+                        ? nameParts.first
+                        : '';
+                    final lastName = nameParts.length > 1
+                        ? nameParts.sublist(1).join(' ')
+                        : '';
+
+                    // Create new customer
+                    final newCustomer = Customer(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      firstName: firstName,
+                      lastName: lastName,
+                      phone: phoneController.text.trim().isEmpty
+                          ? null
+                          : phoneController.text.trim(),
+                      email: emailController.text.trim().isEmpty
+                          ? null
+                          : emailController.text.trim(),
+                      birthday:
+                          '${selectedBirthday!.month.toString().padLeft(2, '0')}-${selectedBirthday!.day.toString().padLeft(2, '0')}',
+                      loyaltyPoints: 0,
+                      createdAt: DateTime.now(),
+                      updatedAt: DateTime.now(),
+                    );
+
+                    // Add customer to catalog provider
+                    await catalogProvider.addCustomer(newCustomer);
+
+                    // Select the new customer for this order
+                    orderProvider.setSelectedCustomer(newCustomer);
+
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Customer "${newCustomer.fullName}" added successfully!',
+                          ),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error adding customer: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                } else if (selectedBirthday == null) {
+                  setState(() {
+                    birthdayTouched = true;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please select a birthday'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Add Customer'),
+            ),
+          ],
+        ),
       ),
     );
   }

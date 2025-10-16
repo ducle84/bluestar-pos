@@ -372,7 +372,7 @@ class _CustomerEditPageState extends State<CustomerEditPage> {
       _phoneController.text = widget.customer!.phone ?? '';
       _addressController.text = widget.customer!.address ?? '';
       _notesController.text = widget.customer!.notes ?? '';
-      _birthdayController.text = widget.customer!.birthday ?? '';
+      _birthdayController.text = widget.customer!.birthday;
       _loyaltyPointsController.text = widget.customer!.loyaltyPoints.toString();
     } else {
       _loyaltyPointsController.text = '0';
@@ -401,7 +401,7 @@ class _CustomerEditPageState extends State<CustomerEditPage> {
             ? null
             : _addressController.text.trim(),
         birthday: _birthdayController.text.trim().isEmpty
-            ? null
+            ? '01-01' // Default if empty
             : _birthdayController.text.trim(),
         notes: _notesController.text.trim().isEmpty
             ? null

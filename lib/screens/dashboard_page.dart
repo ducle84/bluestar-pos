@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'setup/setup_page.dart';
 import 'service_order_page.dart';
 import 'customer_management_page.dart';
+import 'technician_performance_report.dart';
 import '../provider/auth_provider.dart';
 import '../models/service_order.dart';
 import '../models/service_order_item.dart';
@@ -396,28 +397,10 @@ class _HomeContentState extends State<_HomeContent> {
                   const NeverScrollableScrollPhysics(), // Disable grid scrolling since parent scrolls
               children: [
                 _buildQuickActionCard(
-                  'Today\'s Sales',
-                  '\$0.00',
-                  Icons.attach_money,
-                  Colors.green,
-                ),
-                _buildQuickActionCard(
                   'Appointments',
                   '0',
                   Icons.calendar_today,
                   Colors.blue,
-                ),
-                _buildQuickActionCard(
-                  'Total Customers',
-                  '0',
-                  Icons.people,
-                  Colors.orange,
-                ),
-                _buildQuickActionCard(
-                  'Active Services',
-                  '${_inProgressOrders.length}',
-                  Icons.content_cut,
-                  Colors.purple,
                 ),
               ],
             ),
@@ -1527,7 +1510,7 @@ class _ReportsContentState extends State<_ReportsContent> {
       case 1:
         return const _TransactionDetailsReport();
       case 2:
-        return _buildComingSoonReport('Technician Performance');
+        return const TechnicianPerformanceReport();
       case 3:
         return _buildComingSoonReport('Service Analysis');
       default:
