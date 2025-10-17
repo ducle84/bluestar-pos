@@ -6,6 +6,7 @@ import '../models/customer.dart';
 import '../models/service_order.dart';
 import '../models/service_order_item.dart';
 import '../models/appointment.dart';
+import '../models/payment_method_settings.dart';
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -18,6 +19,7 @@ class FirebaseService {
   static const String _serviceOrdersCollection = 'service_orders';
   static const String _serviceOrderItemsCollection = 'service_order_items';
   static const String _appointmentsCollection = 'appointments';
+  static const String _settingsCollection = 'settings';
 
   // Categories CRUD operations
   static Future<List<Category>> getCategories() async {
@@ -1058,6 +1060,44 @@ class FirebaseService {
     } catch (e) {
       print('Error getting appointment by confirmation code: $e');
       return null;
+    }
+  }
+
+  // Payment Method Settings operations
+  static Future<PaymentMethodSettings> getPaymentMethodSettings() async {
+    try {
+      final doc = await _firestore
+          .collection(_settingsCollection)
+          .doc('payment_methods')
+          .get();
+
+      if (doc.exists) {
+        return PaymentMethodSettings.fromMap(doc.data()!);
+      } else {
+        // Return default settings if none exist
+        return PaymentMethodSettings(
+          cashRegister: CashRegisterSettings(),
+          creditCard: CreditCardSettings(),
+        );
+      }
+    } catch (e) {
+      print('Error getting payment method settings: $e');
+      return PaymentMethodSettings(
+        cashRegister: CashRegisterSettings(),
+        creditCard: CreditCardSettings(),
+      );
+    }
+  }
+
+  static Future<void> savePaymentMethodSettings(PaymentMethodSettings settings) async {
+    try {
+      await _firestore
+          .collection(_settingsCollection)
+          .doc('payment_methods')
+          .set(settings.toMap());
+    } catch (e) {
+      print('Error saving payment method settings: $e');
+      throw e;
     }
   }
 }

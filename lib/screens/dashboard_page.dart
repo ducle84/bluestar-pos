@@ -4021,8 +4021,6 @@ class _CustomerRetentionReportState extends State<_CustomerRetentionReport> {
           .where((order) => order.status != ServiceOrderStatus.cancelled)
           .toList();
 
-
-
       final retentionData = <CustomerRetentionData>[];
 
       for (final customer in customers) {
@@ -4034,8 +4032,6 @@ class _CustomerRetentionReportState extends State<_CustomerRetentionReport> {
                   order.customerId == customer.id,
             )
             .toList();
-
-
 
         if (customerOrders.isNotEmpty) {
           customerOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));

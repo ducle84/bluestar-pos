@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'employee_management_page.dart';
 import 'commission_setup_page.dart';
 import 'service_catalog_page.dart';
+import 'payment_methods_setup_page.dart';
 
 class SetupPage extends StatelessWidget {
   const SetupPage({super.key});
@@ -50,7 +51,7 @@ class SetupPage extends StatelessWidget {
                       mainAxisSpacing: 16,
                       childAspectRatio: 1.2,
                     ),
-                    itemCount: 4,
+                    itemCount: 5,
                     itemBuilder: (context, index) {
                       return _getSetupCard(context, index);
                     },
@@ -96,6 +97,18 @@ class SetupPage extends StatelessWidget {
         'onTap': () => Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const ServiceCatalogPage()),
+        ),
+      },
+      {
+        'title': 'Payment Methods',
+        'subtitle': 'Cash register & credit card setup',
+        'icon': Icons.payment,
+        'color': Colors.teal,
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PaymentMethodsSetupPage(),
+          ),
         ),
       },
       {
