@@ -6,10 +6,13 @@ import 'service_order_page.dart';
 import 'customer_management_page.dart';
 import 'customer_checkin_screen.dart';
 import 'technician_performance_report.dart';
+import 'appointment_booking_screen.dart';
 import '../provider/auth_provider.dart';
 import '../models/service_order.dart';
 import '../models/service_order_item.dart';
 import '../models/employee.dart';
+import '../models/appointment.dart';
+
 import '../services/firebase_service.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -206,10 +209,17 @@ class _HomeContentState extends State<_HomeContent> {
   DateTime _currentTime =
       DateTime.now(); // Track current time for timer updates
 
+  // Appointment data
+  List<Appointment> _todayAppointments = [];
+  List<Appointment> _tomorrowAppointments = [];
+  int _upcomingAppointmentsCount = 0;
+  int _appointmentsNeedingConfirmation = 0;
+
   @override
   void initState() {
     super.initState();
     loadInProgressOrders();
+    _loadAppointmentsSummary();
     // Start a timer to update the running time every second
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _inProgressOrders.isNotEmpty) {
@@ -275,8 +285,63 @@ class _HomeContentState extends State<_HomeContent> {
         _employees = employeeMap;
         _orderItems = orderItemsMap;
       });
+
+      // Also refresh appointments summary
+      _loadAppointmentsSummary();
     } catch (e) {
       print('Error loading in-progress orders: $e');
+    }
+  }
+
+  Future<void> _loadAppointmentsSummary() async {
+    try {
+      final today = DateTime.now();
+      final tomorrow = today.add(const Duration(days: 1));
+
+      // Load appointments for today and tomorrow
+      final todayAppointments = await FirebaseService.getAppointmentsByDate(
+        today,
+      );
+      final tomorrowAppointments = await FirebaseService.getAppointmentsByDate(
+        tomorrow,
+      );
+
+      // Filter appointments that need action (scheduled or confirmed)
+      final todayFiltered = todayAppointments
+          .where(
+            (apt) =>
+                apt.status == AppointmentStatus.scheduled ||
+                apt.status == AppointmentStatus.confirmed,
+          )
+          .toList();
+
+      final tomorrowFiltered = tomorrowAppointments
+          .where(
+            (apt) =>
+                apt.status == AppointmentStatus.scheduled ||
+                apt.status == AppointmentStatus.confirmed,
+          )
+          .toList();
+
+      // Count appointments needing confirmation (scheduled status)
+      final needingConfirmation = [
+        ...todayFiltered.where(
+          (apt) => apt.status == AppointmentStatus.scheduled,
+        ),
+        ...tomorrowFiltered.where(
+          (apt) => apt.status == AppointmentStatus.scheduled,
+        ),
+      ].length;
+
+      setState(() {
+        _todayAppointments = todayFiltered;
+        _tomorrowAppointments = tomorrowFiltered;
+        _upcomingAppointmentsCount =
+            todayFiltered.length + tomorrowFiltered.length;
+        _appointmentsNeedingConfirmation = needingConfirmation;
+      });
+    } catch (e) {
+      print('Error loading appointments summary: $e');
     }
   }
 
@@ -417,11 +482,30 @@ class _HomeContentState extends State<_HomeContent> {
               physics:
                   const NeverScrollableScrollPhysics(), // Disable grid scrolling since parent scrolls
               children: [
-                _buildQuickActionCard(
-                  'Appointments',
-                  '0',
-                  Icons.calendar_today,
-                  Colors.blue,
+                GestureDetector(
+                  onTap: () {
+                    // Navigate to appointments tab
+                    final dashboardState = context
+                        .findAncestorStateOfType<_DashboardPageState>();
+                    dashboardState?.setState(() {
+                      dashboardState._selectedIndex =
+                          3; // Appointments tab index
+                    });
+                  },
+                  child: _buildQuickActionCard(
+                    _appointmentsNeedingConfirmation > 0
+                        ? 'Need Confirmation'
+                        : 'Upcoming Appointments',
+                    _appointmentsNeedingConfirmation > 0
+                        ? '$_appointmentsNeedingConfirmation'
+                        : '$_upcomingAppointmentsCount',
+                    _appointmentsNeedingConfirmation > 0
+                        ? Icons.notification_important
+                        : Icons.calendar_today,
+                    _appointmentsNeedingConfirmation > 0
+                        ? Colors.orange
+                        : Colors.blue,
+                  ),
                 ),
               ],
             ),
@@ -1392,27 +1476,608 @@ class _CustomersContent extends StatelessWidget {
   }
 }
 
-class _AppointmentsContent extends StatelessWidget {
+class _AppointmentsContent extends StatefulWidget {
   const _AppointmentsContent();
 
   @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.calendar_today, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'Appointments',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+  State<_AppointmentsContent> createState() => _AppointmentsContentState();
+}
+
+class _AppointmentsContentState extends State<_AppointmentsContent> {
+  List<Appointment> _todayAppointments = [];
+  List<Appointment> _tomorrowAppointments = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppointments();
+  }
+
+  Future<void> _loadAppointments() async {
+    setState(() => _isLoading = true);
+    try {
+      final today = DateTime.now();
+      final tomorrow = today.add(const Duration(days: 1));
+
+      print(
+        'Dashboard: Loading appointments for today: ${today.toIso8601String()}',
+      );
+      print(
+        'Dashboard: Loading appointments for tomorrow: ${tomorrow.toIso8601String()}',
+      );
+
+      // First, let's load all appointments to see what we have
+      final allTodayAppointments = await FirebaseService.getAppointmentsByDate(
+        today,
+      );
+      final allTomorrowAppointments =
+          await FirebaseService.getAppointmentsByDate(tomorrow);
+
+      print(
+        'Dashboard: Raw today appointments: ${allTodayAppointments.length}',
+      );
+      print(
+        'Dashboard: Raw tomorrow appointments: ${allTomorrowAppointments.length}',
+      );
+
+      for (var apt in allTodayAppointments) {
+        print(
+          'Dashboard: Today Raw Appointment: ${apt.customerName} - Status: ${apt.status} - Time: ${apt.timeSlot}',
+        );
+      }
+      for (var apt in allTomorrowAppointments) {
+        print(
+          'Dashboard: Tomorrow Raw Appointment: ${apt.customerName} - Status: ${apt.status} - Time: ${apt.timeSlot}',
+        );
+      }
+
+      // Use the appointments we already loaded
+      final todayAppointments = allTodayAppointments;
+      final tomorrowAppointments = allTomorrowAppointments;
+
+      // Filter to show only appointments that need action (scheduled or confirmed)
+      final todayFiltered = todayAppointments
+          .where(
+            (apt) =>
+                apt.status == AppointmentStatus.scheduled ||
+                apt.status == AppointmentStatus.confirmed,
+          )
+          .toList();
+
+      final tomorrowFiltered = tomorrowAppointments
+          .where(
+            (apt) =>
+                apt.status == AppointmentStatus.scheduled ||
+                apt.status == AppointmentStatus.confirmed,
+          )
+          .toList();
+
+      print(
+        'Dashboard: Today - ${todayFiltered.length} actionable appointments',
+      );
+      print(
+        'Dashboard: Tomorrow - ${tomorrowFiltered.length} actionable appointments',
+      );
+
+      for (var apt in todayFiltered) {
+        print(
+          'Dashboard: Today Appointment ${apt.id}: ${apt.customerName} at ${apt.timeSlot}',
+        );
+      }
+      for (var apt in tomorrowFiltered) {
+        print(
+          'Dashboard: Tomorrow Appointment ${apt.id}: ${apt.customerName} at ${apt.timeSlot}',
+        );
+      }
+
+      setState(() {
+        _todayAppointments = todayFiltered;
+        _tomorrowAppointments = tomorrowFiltered;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Dashboard: Error loading appointments: $e');
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading appointments: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateAppointmentStatus(
+    Appointment appointment,
+    AppointmentStatus newStatus,
+  ) async {
+    try {
+      await FirebaseService.updateAppointment(
+        appointment.copyWith(status: newStatus),
+      );
+      _loadAppointments(); // Refresh the list
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment status updated')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating appointment: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _startAppointment(Appointment appointment) async {
+    try {
+      setState(() => _isLoading = true);
+
+      // Generate special order number for appointments (APT-prefix)
+      final orderNumber =
+          'APT-${DateTime.now().millisecondsSinceEpoch % 1000000}';
+
+      // Create simple service order from appointment
+      final serviceOrder = ServiceOrder(
+        id: null,
+        orderNumber: orderNumber,
+        customerId: appointment.customerId,
+        customerName: appointment.customerName,
+        technicianIds: appointment.technicianId.isEmpty
+            ? []
+            : [appointment.technicianId],
+        subtotal: appointment.estimatedPrice,
+        total: appointment.estimatedPrice,
+        status: ServiceOrderStatus.inProgress,
+        notes:
+            'Created from appointment: ${appointment.confirmationCode ?? appointment.id}',
+      );
+
+      // Update appointment status to in-progress
+      await FirebaseService.updateAppointment(
+        appointment.copyWith(status: AppointmentStatus.inProgress),
+      );
+
+      setState(() => _isLoading = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Appointment started - creating Service Order #$orderNumber',
+            ),
+            backgroundColor: Colors.green,
           ),
-          SizedBox(height: 8),
-          Text(
-            'Appointment management coming soon!',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+        );
+
+        // Navigate to service order page with the appointment data pre-filled
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ServiceOrderPage(
+              existingOrder: serviceOrder,
+              preSelectedTechnicianId: appointment.technicianId.isEmpty
+                  ? null
+                  : appointment.technicianId,
+            ),
+          ),
+        ).then((_) => _loadAppointments());
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error starting appointment: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Color _getStatusColor(AppointmentStatus status) {
+    switch (status) {
+      case AppointmentStatus.confirmed:
+        return Colors.green;
+      case AppointmentStatus.scheduled:
+        return Colors.orange;
+      case AppointmentStatus.inProgress:
+        return Colors.blue;
+      case AppointmentStatus.completed:
+        return Colors.blue.shade700;
+      case AppointmentStatus.cancelled:
+        return Colors.red;
+      case AppointmentStatus.noShow:
+        return Colors.grey;
+    }
+  }
+
+  String _getStatusText(AppointmentStatus status) {
+    switch (status) {
+      case AppointmentStatus.confirmed:
+        return 'Confirmed';
+      case AppointmentStatus.scheduled:
+        return 'Scheduled';
+      case AppointmentStatus.inProgress:
+        return 'In Progress';
+      case AppointmentStatus.completed:
+        return 'Completed';
+      case AppointmentStatus.cancelled:
+        return 'Cancelled';
+      case AppointmentStatus.noShow:
+        return 'No Show';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final tomorrow = today.add(const Duration(days: 1));
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Appointments',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AppointmentBookingScreen(),
+                    ),
+                  ).then((_) => _loadAppointments());
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('New Appointment'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Content
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : (_todayAppointments.isEmpty && _tomorrowAppointments.isEmpty)
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No upcoming appointments',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const AppointmentBookingScreen(),
+                              ),
+                            ).then((_) => _loadAppointments());
+                          },
+                          child: const Text('Book First Appointment'),
+                        ),
+                      ],
+                    ),
+                  )
+                : SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Today's appointments
+                        if (_todayAppointments.isNotEmpty) ...[
+                          _buildDaySection(
+                            'Today - ${today.month}/${today.day}/${today.year}',
+                            _todayAppointments,
+                            Colors.blue,
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Tomorrow's appointments
+                        if (_tomorrowAppointments.isNotEmpty) ...[
+                          _buildDaySection(
+                            'Tomorrow - ${tomorrow.month}/${tomorrow.day}/${tomorrow.year}',
+                            _tomorrowAppointments,
+                            Colors.green,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDaySection(
+    String title,
+    List<Appointment> appointments,
+    Color color,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.calendar_today, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color == Colors.blue
+                      ? Colors.blue.shade800
+                      : Colors.green.shade800,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${appointments.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...appointments.map(
+          (appointment) => _buildAppointmentCard(appointment),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppointmentCard(Appointment appointment) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with time and status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: 20,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      appointment.timeSlot,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(appointment.status),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    _getStatusText(appointment.status),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Customer info
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: Colors.blue.shade100,
+                  child: Text(
+                    appointment.customerName[0].toUpperCase(),
+                    style: TextStyle(
+                      color: Colors.blue.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        appointment.customerName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (appointment.customerPhone.isNotEmpty)
+                        Text(
+                          appointment.customerPhone,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Service and technician info
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.person_outline,
+                        size: 16,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Technician: ${appointment.technicianName}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.spa_outlined,
+                        size: 16,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Services: ${appointment.serviceNames.join(', ')}',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.attach_money,
+                        size: 16,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Total: \$${appointment.estimatedPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Notes if present
+            if (appointment.notes.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Notes: ${appointment.notes}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+
+            // Action buttons
+            if (appointment.status == AppointmentStatus.scheduled ||
+                appointment.status == AppointmentStatus.confirmed) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (appointment.status == AppointmentStatus.scheduled)
+                    TextButton(
+                      onPressed: () => _updateAppointmentStatus(
+                        appointment,
+                        AppointmentStatus.confirmed,
+                      ),
+                      child: const Text('Confirm'),
+                    ),
+                  if (appointment.status == AppointmentStatus.confirmed)
+                    ElevatedButton.icon(
+                      onPressed: () => _startAppointment(appointment),
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Start'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => _updateAppointmentStatus(
+                      appointment,
+                      AppointmentStatus.cancelled,
+                    ),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('Cancel'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../models/employee.dart';
 import '../models/customer.dart';
 import '../models/service_order.dart';
 import '../models/service_order_item.dart';
+import '../models/appointment.dart';
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -16,6 +17,7 @@ class FirebaseService {
   static const String _customersCollection = 'customers';
   static const String _serviceOrdersCollection = 'service_orders';
   static const String _serviceOrderItemsCollection = 'service_order_items';
+  static const String _appointmentsCollection = 'appointments';
 
   // Categories CRUD operations
   static Future<List<Category>> getCategories() async {
@@ -805,5 +807,257 @@ class FirebaseService {
     double pointsPerDollar,
   ) {
     return (totalAmount * pointsPerDollar).round();
+  }
+
+  // ===== APPOINTMENT METHODS =====
+
+  // Get appointments for a specific date
+  static Future<List<Appointment>> getAppointmentsByDate(DateTime date) async {
+    try {
+      print('Fetching appointments for date: ${date.toIso8601String()}');
+
+      // Start of day
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      // End of day
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+      print(
+        'Query range: ${startOfDay.toIso8601String()} to ${endOfDay.toIso8601String()}',
+      );
+
+      // First, try to get all appointments and filter them client-side for debugging
+      final allSnapshot = await _firestore
+          .collection(_appointmentsCollection)
+          .get();
+
+      print('Total appointments in database: ${allSnapshot.docs.length}');
+
+      for (var doc in allSnapshot.docs) {
+        final data = doc.data();
+        print(
+          'Appointment ${doc.id}: appointmentDate = ${data['appointmentDate']}',
+        );
+      }
+
+      final snapshot = await _firestore
+          .collection(_appointmentsCollection)
+          .where(
+            'appointmentDate',
+            isGreaterThanOrEqualTo: startOfDay.toIso8601String(),
+          )
+          .where(
+            'appointmentDate',
+            isLessThanOrEqualTo: endOfDay.toIso8601String(),
+          )
+          .get();
+
+      print('Found ${snapshot.docs.length} appointments for date range query');
+      final appointments = snapshot.docs
+          .map((doc) => Appointment.fromJson({...doc.data(), 'id': doc.id}))
+          .toList();
+
+      // Sort by time slot
+      appointments.sort((a, b) => a.timeSlot.compareTo(b.timeSlot));
+
+      return appointments;
+    } catch (e) {
+      print('Error fetching appointments by date: $e');
+      return [];
+    }
+  }
+
+  // Get appointments for a technician on a specific date
+  static Future<List<Appointment>> getTechnicianAppointments(
+    String technicianId,
+    DateTime date,
+  ) async {
+    try {
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+      final snapshot = await _firestore
+          .collection(_appointmentsCollection)
+          .where('technicianId', isEqualTo: technicianId)
+          .where(
+            'appointmentDate',
+            isGreaterThanOrEqualTo: startOfDay.toIso8601String(),
+          )
+          .where(
+            'appointmentDate',
+            isLessThanOrEqualTo: endOfDay.toIso8601String(),
+          )
+          .get();
+
+      final appointments = snapshot.docs
+          .map((doc) => Appointment.fromJson({...doc.data(), 'id': doc.id}))
+          .toList();
+
+      appointments.sort((a, b) => a.timeSlot.compareTo(b.timeSlot));
+      return appointments;
+    } catch (e) {
+      print('Error fetching technician appointments: $e');
+      return [];
+    }
+  }
+
+  // Create a new appointment
+  static Future<String> createAppointment(Appointment appointment) async {
+    try {
+      print('Creating appointment for ${appointment.customerName}');
+
+      final docRef = await _firestore
+          .collection(_appointmentsCollection)
+          .add(appointment.toJson());
+
+      print('Appointment created with ID: ${docRef.id}');
+      return docRef.id;
+    } catch (e) {
+      print('Error creating appointment: $e');
+      rethrow;
+    }
+  }
+
+  // Update appointment
+  static Future<void> updateAppointment(Appointment appointment) async {
+    try {
+      print('Updating appointment: ${appointment.id}');
+
+      await _firestore
+          .collection(_appointmentsCollection)
+          .doc(appointment.id)
+          .update(appointment.toJson());
+
+      print('Appointment updated successfully');
+    } catch (e) {
+      print('Error updating appointment: $e');
+      rethrow;
+    }
+  }
+
+  // Cancel appointment
+  static Future<void> cancelAppointment(String appointmentId) async {
+    try {
+      await _firestore
+          .collection(_appointmentsCollection)
+          .doc(appointmentId)
+          .update({
+            'status': AppointmentStatus.cancelled.toString().split('.').last,
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+    } catch (e) {
+      print('Error cancelling appointment: $e');
+      rethrow;
+    }
+  }
+
+  // Get available time slots for a technician on a specific date
+  static Future<List<String>> getAvailableTimeSlots(
+    String technicianId,
+    DateTime date,
+  ) async {
+    try {
+      Set<String> bookedSlots = {};
+
+      if (technicianId == 'any' || technicianId.isEmpty) {
+        // For "any technician", check all appointments for the date
+        final allAppointments = await getAppointmentsByDate(date);
+        bookedSlots = allAppointments
+            .where((apt) => apt.status != AppointmentStatus.cancelled)
+            .map((apt) => apt.timeSlot)
+            .toSet();
+      } else {
+        // For specific technician, check only their appointments
+        final existingAppointments = await getTechnicianAppointments(
+          technicianId,
+          date,
+        );
+        bookedSlots = existingAppointments
+            .where((apt) => apt.status != AppointmentStatus.cancelled)
+            .map((apt) => apt.timeSlot)
+            .toSet();
+      }
+
+      // Generate all possible time slots (9 AM to 6 PM, 30-minute intervals)
+      final allSlots = <String>[];
+      for (int hour = 9; hour < 18; hour++) {
+        allSlots.add(
+          '${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? 'PM' : 'AM'}',
+        );
+        allSlots.add(
+          '${hour > 12 ? hour - 12 : hour}:30 ${hour >= 12 ? 'PM' : 'AM'}',
+        );
+      }
+
+      // For "any technician", only show slots that have at least one available technician
+      if (technicianId == 'any' || technicianId.isEmpty) {
+        final employees = await getEmployees();
+        final availableTechnicians = employees
+            .where((e) => e.isActive)
+            .toList();
+        final availableSlots = <String>[];
+
+        for (final slot in allSlots) {
+          // Check if at least one technician is available for this slot
+          bool hasAvailableTechnician = false;
+          for (final tech in availableTechnicians) {
+            final techAppointments = await getTechnicianAppointments(
+              tech.id,
+              date,
+            );
+            final techBookedSlots = techAppointments
+                .where((apt) => apt.status != AppointmentStatus.cancelled)
+                .map((apt) => apt.timeSlot)
+                .toSet();
+            if (!techBookedSlots.contains(slot)) {
+              hasAvailableTechnician = true;
+              break;
+            }
+          }
+          if (hasAvailableTechnician) {
+            availableSlots.add(slot);
+          }
+        }
+        return availableSlots;
+      } else {
+        // Filter out booked slots for specific technician
+        final availableSlots = allSlots
+            .where((slot) => !bookedSlots.contains(slot))
+            .toList();
+        return availableSlots;
+      }
+    } catch (e) {
+      print('Error getting available time slots: $e');
+      return [];
+    }
+  }
+
+  // Generate confirmation code
+  static String generateConfirmationCode() {
+    final now = DateTime.now();
+    return 'CE${now.year.toString().substring(2)}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.millisecond.toString().padLeft(3, '0')}';
+  }
+
+  // Get appointment by confirmation code
+  static Future<Appointment?> getAppointmentByConfirmationCode(
+    String confirmationCode,
+  ) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_appointmentsCollection)
+          .where('confirmationCode', isEqualTo: confirmationCode)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return Appointment.fromJson({
+          ...snapshot.docs.first.data(),
+          'id': snapshot.docs.first.id,
+        });
+      }
+      return null;
+    } catch (e) {
+      print('Error getting appointment by confirmation code: $e');
+      return null;
+    }
   }
 }
