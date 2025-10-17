@@ -335,6 +335,92 @@ class FirebaseService {
     }
   }
 
+  // Additional customer methods for check-in system
+  static Future<List<Customer>> searchCustomersByPhone(String phone) async {
+    try {
+      print('Searching for customers with phone: $phone');
+
+      // Search for exact match first
+      QuerySnapshot snapshot = await _firestore
+          .collection(_customersCollection)
+          .where('phone', isEqualTo: phone)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      List<Customer> customers = snapshot.docs
+          .map((doc) => Customer.fromFirestore(doc))
+          .toList();
+
+      // If no exact match, try searching by phone without formatting
+      if (customers.isEmpty) {
+        final phoneDigits = phone.replaceAll(RegExp(r'[^\d]'), '');
+        if (phoneDigits.length == 10) {
+          // Try different phone formats
+          final formats = [
+            phoneDigits,
+            '${phoneDigits.substring(0, 3)}-${phoneDigits.substring(3, 6)}-${phoneDigits.substring(6)}',
+            '${phoneDigits.substring(0, 3)}.${phoneDigits.substring(3, 6)}.${phoneDigits.substring(6)}',
+            '${phoneDigits.substring(0, 3)} ${phoneDigits.substring(3, 6)} ${phoneDigits.substring(6)}',
+            '(${phoneDigits.substring(0, 3)}) ${phoneDigits.substring(3, 6)}-${phoneDigits.substring(6)}',
+            '+1${phoneDigits}',
+          ];
+
+          for (String format in formats) {
+            snapshot = await _firestore
+                .collection(_customersCollection)
+                .where('phone', isEqualTo: format)
+                .where('isActive', isEqualTo: true)
+                .get();
+
+            if (snapshot.docs.isNotEmpty) {
+              customers = snapshot.docs
+                  .map((doc) => Customer.fromFirestore(doc))
+                  .toList();
+              break;
+            }
+          }
+        }
+      }
+
+      print('Found ${customers.length} customers with phone: $phone');
+      return customers;
+    } catch (e) {
+      print('Error searching customers by phone: $e');
+      return [];
+    }
+  }
+
+  static Future<void> updateCustomer(
+    String customerId,
+    Customer customer,
+  ) async {
+    try {
+      await _firestore.collection(_customersCollection).doc(customerId).update({
+        ...customer.toMap(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('Customer updated: $customerId');
+    } catch (e) {
+      print('Error updating customer: $e');
+      throw Exception('Failed to update customer: $e');
+    }
+  }
+
+  static Future<String> createServiceOrder(ServiceOrder order) async {
+    try {
+      final docRef = await _firestore.collection(_serviceOrdersCollection).add({
+        ...order.toMap(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('Service order created: ${docRef.id}');
+      return docRef.id;
+    } catch (e) {
+      print('Error creating service order: $e');
+      throw Exception('Failed to create service order: $e');
+    }
+  }
+
   // Service Order CRUD operations
   static Future<List<ServiceOrder>> getServiceOrders({
     ServiceOrderStatus? status,

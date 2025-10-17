@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'setup/setup_page.dart';
 import 'service_order_page.dart';
 import 'customer_management_page.dart';
+import 'customer_checkin_screen.dart';
 import 'technician_performance_report.dart';
 import '../provider/auth_provider.dart';
 import '../models/service_order.dart';
@@ -92,6 +93,26 @@ class _DashboardPageState extends State<DashboardPage> {
               index: 3,
             ),
             _buildDrawerItem(icon: Icons.analytics, title: 'Reports', index: 4),
+            const Divider(),
+            ListTile(
+              leading: Icon(Icons.touch_app, color: Colors.green.shade600),
+              title: Text(
+                'Customer Check-in',
+                style: TextStyle(
+                  color: Colors.green.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context); // Close drawer first
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CustomerCheckinScreen(),
+                  ),
+                );
+              },
+            ),
             const Divider(),
             _buildDrawerItem(icon: Icons.settings, title: 'Setup', index: 5),
             const Divider(),
