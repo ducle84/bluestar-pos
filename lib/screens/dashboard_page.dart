@@ -3987,11 +3987,13 @@ class _TransactionDetailsReportState extends State<_TransactionDetailsReport> {
     );
   }
 }
+
 class _CustomerRetentionReport extends StatefulWidget {
   const _CustomerRetentionReport();
 
   @override
-  State<_CustomerRetentionReport> createState() => _CustomerRetentionReportState();
+  State<_CustomerRetentionReport> createState() =>
+      _CustomerRetentionReportState();
 }
 
 class _CustomerRetentionReportState extends State<_CustomerRetentionReport> {
@@ -4013,45 +4015,60 @@ class _CustomerRetentionReportState extends State<_CustomerRetentionReport> {
     try {
       final customers = await FirebaseService.getCustomers();
       final orders = await FirebaseService.getServiceOrders();
-      final completedOrders = orders
-          .where((order) => order.status == ServiceOrderStatus.completed)
+
+      // Include all orders (except cancelled) for retention analysis
+      final relevantOrders = orders
+          .where((order) => order.status != ServiceOrderStatus.cancelled)
           .toList();
 
+
+
       final retentionData = <CustomerRetentionData>[];
-      
+
       for (final customer in customers) {
-        final customerOrders = completedOrders
-            .where((order) => order.customerId == customer.id)
+        final customerOrders = relevantOrders
+            .where(
+              (order) =>
+                  order.customerId != null &&
+                  customer.id != null &&
+                  order.customerId == customer.id,
+            )
             .toList();
+
+
 
         if (customerOrders.isNotEmpty) {
           customerOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          
+
           final lastVisit = customerOrders.first.createdAt;
           final firstVisit = customerOrders.last.createdAt;
           final totalVisits = customerOrders.length;
           final totalSpent = customerOrders.fold<double>(
-            0.0, 
+            0.0,
             (sum, order) => sum + order.total,
           );
-          
-          final daysSinceLastVisit = DateTime.now().difference(lastVisit).inDays;
+
+          final daysSinceLastVisit = DateTime.now()
+              .difference(lastVisit)
+              .inDays;
           final totalDays = DateTime.now().difference(firstVisit).inDays;
-          final visitFrequency = totalDays > 0 
-              ? (totalVisits / (totalDays / 30.0)) 
+          final visitFrequency = totalDays > 0
+              ? (totalVisits / (totalDays / 30.0))
               : 0.0;
 
-          retentionData.add(CustomerRetentionData(
-            customerId: customer.id ?? '',
-            customerName: customer.fullName,
-            customerPhone: customer.phone ?? '',
-            firstVisit: firstVisit,
-            lastVisit: lastVisit,
-            totalVisits: totalVisits,
-            totalSpent: totalSpent,
-            daysSinceLastVisit: daysSinceLastVisit,
-            visitFrequency: visitFrequency,
-          ));
+          retentionData.add(
+            CustomerRetentionData(
+              customerId: customer.id ?? '',
+              customerName: customer.fullName,
+              customerPhone: customer.phone ?? '',
+              firstVisit: firstVisit,
+              lastVisit: lastVisit,
+              totalVisits: totalVisits,
+              totalSpent: totalSpent,
+              daysSinceLastVisit: daysSinceLastVisit,
+              visitFrequency: visitFrequency,
+            ),
+          );
         }
       }
 
@@ -4062,7 +4079,6 @@ class _CustomerRetentionReportState extends State<_CustomerRetentionReport> {
 
       _sortData();
     } catch (e) {
-      print('Error loading customer retention data: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -4105,10 +4121,12 @@ class _CustomerRetentionReportState extends State<_CustomerRetentionReport> {
         .where((c) => c.daysSinceLastVisit > _selectedTimeFrame)
         .length;
     final activeCustomers = totalCustomers - inactiveCustomers;
-    final averageVisits = _customerData
-        .fold<double>(0.0, (sum, c) => sum + c.totalVisits) / totalCustomers;
-    final averageSpent = _customerData
-        .fold<double>(0.0, (sum, c) => sum + c.totalSpent) / totalCustomers;
+    final averageVisits =
+        _customerData.fold<double>(0.0, (sum, c) => sum + c.totalVisits) /
+        totalCustomers;
+    final averageSpent =
+        _customerData.fold<double>(0.0, (sum, c) => sum + c.totalSpent) /
+        totalCustomers;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -4163,7 +4181,12 @@ class _CustomerRetentionReportState extends State<_CustomerRetentionReport> {
     );
   }
 
-  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
+  Widget _buildSummaryCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -4242,7 +4265,7 @@ class _CustomerRetentionReportState extends State<_CustomerRetentionReport> {
               ],
             ),
           ),
-          
+
           if (!_isLoading) ...[
             Padding(
               padding: const EdgeInsets.all(16),
@@ -4254,134 +4277,186 @@ class _CustomerRetentionReportState extends State<_CustomerRetentionReport> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _customerData.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No customer data available',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                ? const Center(
+                    child: Text(
+                      'No customer data available',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  )
+                : Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
-                      )
-                    : Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              border: Border(
-                                bottom: BorderSide(color: Colors.grey.shade300),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          border: Border(
+                            bottom: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            _buildSortableHeader('Customer', 'name', flex: 2),
+                            _buildSortableHeader(
+                              'Last Visit',
+                              'lastVisit',
+                              flex: 2,
+                            ),
+                            _buildSortableHeader(
+                              'Total Visits',
+                              'totalVisits',
+                              flex: 1,
+                            ),
+                            _buildSortableHeader(
+                              'Total Spent',
+                              'totalSpent',
+                              flex: 1,
+                            ),
+                            _buildSortableHeader(
+                              'Visit Freq/Mo',
+                              'visitFrequency',
+                              flex: 1,
+                            ),
+                            const Expanded(
+                              child: Text(
+                                'Status',
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                _buildSortableHeader('Customer', 'name', flex: 2),
-                                _buildSortableHeader('Last Visit', 'lastVisit', flex: 2),
-                                _buildSortableHeader('Total Visits', 'totalVisits', flex: 1),
-                                _buildSortableHeader('Total Spent', 'totalSpent', flex: 1),
-                                _buildSortableHeader('Visit Freq/Mo', 'visitFrequency', flex: 1),
-                                const Expanded(child: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
-                              ],
-                            ),
-                          ),
-                          
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: _customerData.length,
-                              itemBuilder: (context, index) {
-                                final customer = _customerData[index];
-                                final isInactive = customer.daysSinceLastVisit > _selectedTimeFrame;
-                                
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: isInactive ? Colors.red.shade50 : null,
-                                    border: Border(
-                                      bottom: BorderSide(color: Colors.grey.shade200),
+                          ],
+                        ),
+                      ),
+
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _customerData.length,
+                          itemBuilder: (context, index) {
+                            final customer = _customerData[index];
+                            final isInactive =
+                                customer.daysSinceLastVisit >
+                                _selectedTimeFrame;
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isInactive ? Colors.red.shade50 : null,
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          customer.customerName,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (customer.customerPhone.isNotEmpty)
+                                          Text(
+                                            customer.customerPhone,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 2,
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              customer.customerName,
-                                              style: const TextStyle(fontWeight: FontWeight.w600),
-                                            ),
-                                            if (customer.customerPhone.isNotEmpty)
-                                              Text(
-                                                customer.customerPhone,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey.shade600,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              '${customer.lastVisit.month}/${customer.lastVisit.day}/${customer.lastVisit.year}',
-                                              style: const TextStyle(fontWeight: FontWeight.w500),
-                                            ),
-                                            Text(
-                                              '${customer.daysSinceLastVisit} days ago',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: isInactive ? Colors.red : Colors.grey.shade600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          customer.totalVisits.toString(),
-                                          style: const TextStyle(fontWeight: FontWeight.w500),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          '\$${customer.totalSpent.toStringAsFixed(0)}',
-                                          style: const TextStyle(fontWeight: FontWeight.w500),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          customer.visitFrequency.toStringAsFixed(1),
-                                          style: const TextStyle(fontWeight: FontWeight.w500),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: isInactive ? Colors.red : Colors.green,
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            isInactive ? 'Inactive' : 'Active',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            textAlign: TextAlign.center,
+                                  Expanded(
+                                    flex: 2,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${customer.lastVisit.month}/${customer.lastVisit.day}/${customer.lastVisit.year}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                        Text(
+                                          '${customer.daysSinceLastVisit} days ago',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: isInactive
+                                                ? Colors.red
+                                                : Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
+                                  Expanded(
+                                    child: Text(
+                                      customer.totalVisits.toString(),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      '\$${customer.totalSpent.toStringAsFixed(0)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      customer.visitFrequency.toStringAsFixed(
+                                        1,
+                                      ),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isInactive
+                                            ? Colors.red
+                                            : Colors.green,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        isInactive ? 'Inactive' : 'Active',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
+                    ],
+                  ),
           ),
         ],
       ),
