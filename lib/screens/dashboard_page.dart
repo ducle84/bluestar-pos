@@ -210,8 +210,8 @@ class _HomeContentState extends State<_HomeContent> {
       DateTime.now(); // Track current time for timer updates
 
   // Appointment data
-  int _upcomingAppointmentsCount = 0;
-  int _appointmentsNeedingConfirmation = 0;
+  List<Appointment> _appointmentsNeedingConfirmation = [];
+  List<Appointment> _upcomingAppointments = [];
 
   @override
   void initState() {
@@ -321,7 +321,7 @@ class _HomeContentState extends State<_HomeContent> {
           )
           .toList();
 
-      // Count appointments needing confirmation (scheduled status)
+      // Get appointments needing confirmation (scheduled status)
       final needingConfirmation = [
         ...todayFiltered.where(
           (apt) => apt.status == AppointmentStatus.scheduled,
@@ -329,12 +329,14 @@ class _HomeContentState extends State<_HomeContent> {
         ...tomorrowFiltered.where(
           (apt) => apt.status == AppointmentStatus.scheduled,
         ),
-      ].length;
+      ];
+
+      // All upcoming appointments (today + tomorrow)
+      final allUpcoming = [...todayFiltered, ...tomorrowFiltered];
 
       setState(() {
-        _upcomingAppointmentsCount =
-            todayFiltered.length + tomorrowFiltered.length;
         _appointmentsNeedingConfirmation = needingConfirmation;
+        _upcomingAppointments = allUpcoming;
       });
     } catch (e) {
       print('Error loading appointments summary: $e');
@@ -467,45 +469,8 @@ class _HomeContentState extends State<_HomeContent> {
           _buildActiveTechniciansSection(),
           const SizedBox(height: 16),
 
-          // Grid view with fixed height to prevent overflow
-          SizedBox(
-            height: 400, // Fixed height for the grid
-            child: GridView.count(
-              crossAxisCount: 2,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 2.2, // Adjust aspect ratio to give more height
-              physics:
-                  const NeverScrollableScrollPhysics(), // Disable grid scrolling since parent scrolls
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    // Navigate to appointments tab
-                    final dashboardState = context
-                        .findAncestorStateOfType<_DashboardPageState>();
-                    dashboardState?.setState(() {
-                      dashboardState._selectedIndex =
-                          3; // Appointments tab index
-                    });
-                  },
-                  child: _buildQuickActionCard(
-                    _appointmentsNeedingConfirmation > 0
-                        ? 'Need Confirmation'
-                        : 'Upcoming Appointments',
-                    _appointmentsNeedingConfirmation > 0
-                        ? '$_appointmentsNeedingConfirmation'
-                        : '$_upcomingAppointmentsCount',
-                    _appointmentsNeedingConfirmation > 0
-                        ? Icons.notification_important
-                        : Icons.calendar_today,
-                    _appointmentsNeedingConfirmation > 0
-                        ? Colors.orange
-                        : Colors.blue,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Appointments Section
+          _buildAppointmentsSection(),
         ],
       ),
     );
@@ -1185,45 +1150,263 @@ class _HomeContentState extends State<_HomeContent> {
     );
   }
 
-  Widget _buildQuickActionCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0), // Reduced padding
+  Widget _buildAppointmentsSection() {
+    // If no appointments at all, show a simple message
+    if (_appointmentsNeedingConfirmation.isEmpty &&
+        _upcomingAppointments.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
+        ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize:
-              MainAxisSize.min, // Important: minimize the column height
           children: [
-            Icon(icon, size: 28, color: color), // Smaller icon
-            const SizedBox(height: 6), // Reduced spacing
-            FittedBox(
-              // Ensures text fits within available space
-              child: Text(
-                value,
-                style: TextStyle(
-                  fontSize: 20, // Smaller font
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+            Icon(Icons.calendar_today, color: Colors.grey.shade400, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              'No Upcoming Appointments',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade600,
               ),
             ),
-            const SizedBox(height: 2), // Reduced spacing
+            const SizedBox(height: 8),
             Text(
-              title,
-              style: const TextStyle(fontSize: 12), // Smaller font
+              'All appointments for today and tomorrow are up to date',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
               textAlign: TextAlign.center,
-              maxLines: 2, // Allow wrapping
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Appointments needing confirmation (priority)
+        if (_appointmentsNeedingConfirmation.isNotEmpty) ...[
+          _buildAppointmentTile(
+            title: 'Appointments Need Confirmation',
+            appointments: _appointmentsNeedingConfirmation,
+            color: Colors.orange,
+            icon: Icons.notification_important,
+            isUrgent: true,
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Upcoming confirmed appointments
+        if (_upcomingAppointments
+            .where((apt) => apt.status == AppointmentStatus.confirmed)
+            .isNotEmpty) ...[
+          _buildAppointmentTile(
+            title: 'Confirmed Appointments',
+            appointments: _upcomingAppointments
+                .where((apt) => apt.status == AppointmentStatus.confirmed)
+                .toList(),
+            color: Colors.blue,
+            icon: Icons.calendar_today,
+            isUrgent: false,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAppointmentTile({
+    required String title,
+    required List<Appointment> appointments,
+    required MaterialColor color,
+    required IconData icon,
+    required bool isUrgent,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate to appointments tab
+        final dashboardState = context
+            .findAncestorStateOfType<_DashboardPageState>();
+        dashboardState?.setState(() {
+          dashboardState._selectedIndex = 3; // Appointments tab index
+        });
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isUrgent
+                ? [Colors.orange.shade100, Colors.orange.shade50]
+                : [Colors.blue.shade100, Colors.blue.shade50],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isUrgent ? Colors.orange.shade300 : Colors.blue.shade300,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              children: [
+                Icon(icon, color: color.shade700, size: 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: color.shade800,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.shade600,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${appointments.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // List of appointments (max 3 visible)
+            ...appointments
+                .take(3)
+                .map((appointment) => _buildAppointmentRow(appointment)),
+
+            // Show more indicator if there are more than 3
+            if (appointments.length > 3) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.more_horiz, color: color.shade600, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${appointments.length - 3} more appointments',
+                      style: TextStyle(
+                        color: color.shade600,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, color: color.shade600, size: 16),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppointmentRow(Appointment appointment) {
+    final isToday = DateTime.now().day == appointment.appointmentDate.day;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          // Time badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: isToday ? Colors.green.shade100 : Colors.blue.shade100,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              appointment.timeSlot,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isToday ? Colors.green.shade700 : Colors.blue.shade700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Customer info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  appointment.customerName,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  appointment.serviceNames.join(', '),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+
+          // Day indicator
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: isToday ? Colors.green.shade600 : Colors.blue.shade600,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              isToday ? 'TODAY' : 'TOMORROW',
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
