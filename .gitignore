@@ -43,3 +43,19 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Chrome device files
+chrome-device/
+
+# Flutter build files
+flutter_build/
+
+# Package config files
+package_config.json
+package_graph.json
+
+# Extension discovery
+extension_discovery/
+
+# Dartpad
+dartpad/

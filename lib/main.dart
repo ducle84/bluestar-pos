@@ -1,12 +1,12 @@
-import 'package:cateye_pos/screens/login_page.dart';
-import 'package:cateye_pos/screens/dashboard_page.dart';
+import 'screens/login_page.dart';
+import 'screens/dashboard_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
-import 'package:cateye_pos/auth/firebase_options.dart';
-import 'package:cateye_pos/provider/auth_provider.dart';
-import 'package:cateye_pos/provider/service_order_provider.dart';
-import 'package:cateye_pos/provider/catalog_provider.dart';
+import 'firebase_options.dart';
+import 'provider/auth_provider.dart';
+import 'provider/service_order_provider.dart';
+import 'provider/catalog_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

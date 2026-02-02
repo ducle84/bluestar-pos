@@ -5,7 +5,7 @@ import 'screens/appointment_booking_screen.dart';
 import 'provider/auth_provider.dart';
 import 'provider/catalog_provider.dart';
 import 'provider/service_order_provider.dart';
-import 'auth/firebase_options.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

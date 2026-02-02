@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cateye_pos/provider/auth_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' as FirebaseAuth;
+import '../provider/auth_provider.dart';
+import '../utils/admin_setup_helper.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,21 +14,59 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController(
-    text: 'ducle84@gmail.com',
+    text: 'admin@bluestar.com',
   );
   final TextEditingController _passwordController = TextEditingController(
     text: 'Open4408',
   );
 
+  Future<void> _createAdminUser() async {
+    try {
+      await FirebaseAuth.FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: 'admin@bluesalon',
+        password: 'Open4408',
+      );
+      await FirebaseAuth.FirebaseAuth.instance
+          .signOut(); // Sign out after creating
+      print('Admin user created successfully');
+    } catch (e) {
+      print('Admin user creation error: $e');
+      // If user already exists, that's fine
+    }
+  }
+
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      // First attempt to login
       final success = await authProvider.signInWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
 
-      if (!success && mounted) {
+      // If login failed and it's the admin account, try creating it first
+      if (!success && _emailController.text.trim() == 'admin@bluesalon.com') {
+        print('Admin login failed, trying to create admin user...');
+        await _createAdminUser();
+
+        // Try logging in again after creating the user
+        final secondAttempt = await authProvider.signInWithEmailAndPassword(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+
+        if (!secondAttempt && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                authProvider.error ?? 'Login failed after creating admin user',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else if (!success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(authProvider.error ?? 'Login failed'),
@@ -41,6 +81,11 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
+        // Add null check for authProvider
+        if (authProvider == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
         return Scaffold(
           body: Container(
             width: double.infinity,
@@ -198,6 +243,26 @@ class _LoginPageState extends State<LoginPage> {
                                           letterSpacing: 1,
                                         ),
                                       ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Temporary admin setup button
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AdminSetupScreen(),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                'Setup Admin User',
+                                style: TextStyle(
+                                  color: Color(0xFF2575FC),
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                           ],

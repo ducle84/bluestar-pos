@@ -1,0 +1,57 @@
+Category,Service Name,Price,Description,Duration
+SIGNATURE MANICURES,Classic Manicure,20,Trim shape cuticle care and high-shine buff or polish,30
+SIGNATURE MANICURES,Deluxe Manicure,25,Includes everything in the classic manicure and paraffin wax,35
+SIGNATURE MANICURES,Gel Manicure,35,Classic manicure with gel polish,40
+SIGNATURE MANICURES,Gel Color Change,20,Gel polish color change service,20
+SIGNATURE MANICURES,Gel French Manicure,40,Classic manicure with gel polish and french,45
+SIGNATURE MANICURES,Gel French Tip Change,25,Gel french tip color change,25
+PREMIER PEDICURES,Classic Pedicure,30,Includes callus removal sea salt exfoliation hot towels and 6 minute leg and foot massage,30
+PREMIER PEDICURES,Deluxe Pedicure,38,Everything in Classic pedicure plus 12 minute massage and choice of hot stone or paraffin treatment,40
+PREMIER PEDICURES,Vitamin Pedicure,48,Scented bath salt vitamin with fresh orange scrub intense exfoliation callus removal paraffin treatment and 15 minute hot stone massage,50
+PREMIER PEDICURES,Heaven Pedicure,58,Walnut husk and paraffin treatment with fresh Aloe Vera mask and 20 minute hot stone massage plus neck heated pad,55
+PREMIER PEDICURES,Ultimate Pedicure,70,Luxurious spa experience with full package spa products Aloe Vera mask paraffin treatment 20 minute hot stone massage and 10 minute neck shoulder massage,60
+NAIL ENHANCEMENTS,Acrylic w/ Gel Full Set,50,Full set acrylic with gel finish,90
+NAIL ENHANCEMENTS,Acrylic w/ Gel Fill,35,Fill for acrylic with gel,60
+NAIL ENHANCEMENTS,Acrylic Full Set,40,Full set acrylic nails,90
+NAIL ENHANCEMENTS,Acrylic Fill,25,Fill for acrylic nails,60
+NAIL ENHANCEMENTS,Overlay Full Set,35,Full set overlay nails,75
+NAIL ENHANCEMENTS,Overlay Fill,25,Fill for overlay nails,45
+NAIL ENHANCEMENTS,Color Powder Full Set,45,Full set with color powder,90
+NAIL ENHANCEMENTS,Color Powder Fill,30,Fill with color powder,60
+NAIL ENHANCEMENTS,Pink & White Full Set,55,Full set pink and white nails,90
+NAIL ENHANCEMENTS,Pink & White Fill,45,Fill for pink and white nails,60
+NAIL ENHANCEMENTS,White Tip Full Set,40,Full set white tip nails,90
+NAIL ENHANCEMENTS,White Tip Fill,30,Fill for white tip nails,60
+NAIL ENHANCEMENTS,Ombré Set Full Set,55,Full set ombré nails,90
+NAIL ENHANCEMENTS,Ombré Set Fill,30,Fill for ombré nails,60
+NEXGEN DIPPING POWDER,Dip Powder,40,Nexgen dipping powder service,60
+NEXGEN DIPPING POWDER,Dip French,45,Nexgen dipping powder with french,65
+NEXGEN DIPPING POWDER,Dip Ombré,55,Nexgen dipping powder with ombré,70
+KIDS 9 & UNDER,Kids Hand Polish,5,Hand polish for kids 9 and under,15
+KIDS 9 & UNDER,Kids Toe Polish,7,Toe polish for kids 9 and under,15
+KIDS 9 & UNDER,Kids Manicure,10,Manicure for kids 9 and under,20
+KIDS 9 & UNDER,Kids Pedicure,25,Pedicure for kids 9 and under,30
+KIDS 9 & UNDER,Kids Combo,30,Manicure and pedicure combo for kids,45
+ADD-ONS & ART,Add Gel/Shellac,15,Add gel or shellac to mani or pedi,15
+ADD-ONS & ART,Add Nail Tips,5,Add nail tips service,10
+ADD-ONS & ART,Hand Polish,10,Hand polish service,15
+ADD-ONS & ART,Toe Polish,12,Toe polish service,15
+ADD-ONS & ART,Acrylic 2 Toes Nail,12,Acrylic for 2 toes,20
+ADD-ONS & ART,Nail Repair,3,Nail repair service,10
+ADD-ONS & ART,Shaping,5,Nail shaping service,10
+ADD-ONS & ART,Enhancement Removal,10,Removal of nail enhancements,20
+ADD-ONS & ART,French/American Polish,5,French or American polish,10
+ADD-ONS & ART,Extra Massage,1,Extra massage per minute,1
+ADD-ONS & ART,Paraffin Wax,5,Paraffin wax treatment,15
+ADD-ONS & ART,Hot Stone,5,Hot stone treatment,15
+ADD-ONS & ART,Cat Eye Polish,15,Cat eye polish application,20
+WAXING,Eyebrow Waxing,10,Eyebrow waxing service,15
+WAXING,Chin Waxing,10,Chin waxing service,15
+WAXING,Neck Waxing,12,Neck waxing service,20
+WAXING,Full Arm Waxing,35,Full arm waxing service,45
+WAXING,Full Leg Waxing,45,Full leg waxing service,60
+WAXING,Underarm Waxing,15,Underarm waxing service,20
+WAXING,Lip Waxing,6,Lip waxing service,10
+WAXING,Whole Face Waxing,45,Whole face waxing service,60
+WAXING,Half Arm Waxing,20,Half arm waxing service,30
+WAXING,Half Leg Waxing,25,Half leg waxing service,40

@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "765053941387",
-    "project_id": "cateyepos",
-    "storage_bucket": "cateyepos.firebasestorage.app"
+    "project_number": "631138056518",
+    "project_id": "bluestar-7e25a",
+    "storage_bucket": "bluestar-7e25a.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:765053941387:android:e8f05ec3c1f40bbceb468e",
+        "mobilesdk_app_id": "1:631138056518:android:fc38ef7f40af90bdeacd47",
         "android_client_info": {
-          "package_name": "com.example.cateye_pos"
+          "package_name": "com.example.bluestar"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyChL8SAIkD0AZ7cPuUFPOJtTxA7_23otIg"
+          "current_key": "AIzaSyCuo_rA9QMziQ7g9DQ_HPadzOvJq496jgU"
         }
       ],
       "services": {

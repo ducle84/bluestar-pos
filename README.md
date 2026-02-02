@@ -1,4 +1,4 @@
-# cateye_pos
+# bluestar
 
 A new Flutter project.
 
