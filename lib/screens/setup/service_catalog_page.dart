@@ -54,6 +54,9 @@ class _ServiceCatalogPageState extends State<ServiceCatalogPage> {
                 case 'add':
                   await _showServiceDialog(context);
                   break;
+                case 'manage_categories':
+                  await _showCategoryManagementDialog(context);
+                  break;
               }
             },
             itemBuilder: (context) => [
@@ -84,6 +87,16 @@ class _ServiceCatalogPageState extends State<ServiceCatalogPage> {
                     Icon(Icons.add),
                     SizedBox(width: 8),
                     Text('Add Service'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'manage_categories',
+                child: Row(
+                  children: [
+                    Icon(Icons.category),
+                    SizedBox(width: 8),
+                    Text('Manage Categories'),
                   ],
                 ),
               ),
@@ -336,44 +349,61 @@ class _ServiceCatalogPageState extends State<ServiceCatalogPage> {
   }
 
   Widget _buildCategoryFilter(CatalogProvider catalogProvider) {
-    return SizedBox(
-      height: 50,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          // All Categories Filter
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: FilterChip(
-              selected: _selectedCategoryId == null,
-              label: const Text('All'),
-              onSelected: (selected) {
-                setState(() {
-                  _selectedCategoryId = null;
-                });
-              },
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 50,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                // All Categories Filter
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: FilterChip(
+                    selected: _selectedCategoryId == null,
+                    label: const Text('All'),
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedCategoryId = null;
+                      });
+                    },
+                  ),
+                ),
+                // Individual Category Filters
+                ...catalogProvider.categories.map((category) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: FilterChip(
+                      selected: _selectedCategoryId == category.id,
+                      label: Text(category.name),
+                      backgroundColor: category.color.withOpacity(0.1),
+                      selectedColor: category.color.withOpacity(0.3),
+                      checkmarkColor: category.color,
+                      onSelected: (selected) {
+                        setState(() {
+                          _selectedCategoryId = selected ? category.id : null;
+                        });
+                      },
+                    ),
+                  );
+                }),
+              ],
             ),
           ),
-          // Individual Category Filters
-          ...catalogProvider.categories.map((category) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: FilterChip(
-                selected: _selectedCategoryId == category.id,
-                label: Text(category.name),
-                backgroundColor: category.color.withOpacity(0.1),
-                selectedColor: category.color.withOpacity(0.3),
-                checkmarkColor: category.color,
-                onSelected: (selected) {
-                  setState(() {
-                    _selectedCategoryId = selected ? category.id : null;
-                  });
-                },
-              ),
-            );
-          }),
-        ],
-      ),
+        ),
+        const SizedBox(width: 8),
+        // Manage Categories Button
+        IconButton(
+          onPressed: () => _showCategoryManagementDialog(context),
+          icon: const Icon(Icons.settings),
+          tooltip: 'Manage Categories',
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.grey[100],
+            foregroundColor: Colors.grey[700],
+          ),
+        ),
+      ],
     );
   }
 
@@ -654,6 +684,393 @@ class _ServiceCatalogPageState extends State<ServiceCatalogPage> {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Error deleting service: $e')));
+        }
+      }
+    }
+  }
+
+  Future<void> _showCategoryManagementDialog(BuildContext context) async {
+    await showDialog(
+      context: context,
+      builder: (context) => Consumer<CatalogProvider>(
+        builder: (context, catalogProvider, child) => AlertDialog(
+          title: const Text('Manage Categories'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${catalogProvider.categories.length} categories',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => _showCategoryDialog(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Category'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: catalogProvider.categories.isEmpty
+                      ? const Center(child: Text('No categories available'))
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: catalogProvider.categories.length,
+                          itemBuilder: (context, index) {
+                            final category = catalogProvider.categories[index];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: category.color.withOpacity(
+                                    0.2,
+                                  ),
+                                  child: Icon(
+                                    category.icon,
+                                    color: category.color,
+                                  ),
+                                ),
+                                title: Text(category.name),
+                                subtitle: Text(category.description),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit),
+                                      onPressed: () => _showCategoryDialog(
+                                        context,
+                                        category: category,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () => _deleteCategory(
+                                        catalogProvider,
+                                        category,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showCategoryDialog(
+    BuildContext context, {
+    Category? category,
+  }) async {
+    final isEdit = category != null;
+    final nameController = TextEditingController(text: category?.name ?? '');
+    final descriptionController = TextEditingController(
+      text: category?.description ?? '',
+    );
+    IconData selectedIcon = category?.icon ?? Icons.miscellaneous_services;
+    Color selectedColor = category?.color ?? Colors.blue;
+
+    final predefinedIcons = [
+      Icons.miscellaneous_services,
+      Icons.home_repair_service,
+      Icons.build,
+      Icons.cleaning_services,
+      Icons.electrical_services,
+      Icons.plumbing,
+      Icons.handyman,
+      Icons.design_services,
+      Icons.computer,
+      Icons.phone,
+      Icons.car_repair,
+      Icons.medical_services,
+      Icons.fitness_center,
+      Icons.restaurant,
+      Icons.shopping_bag,
+    ];
+
+    final predefinedColors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.red,
+      Colors.purple,
+      Colors.teal,
+      Colors.indigo,
+      Colors.pink,
+      Colors.amber,
+      Colors.cyan,
+      Colors.lime,
+      Colors.deepOrange,
+      Colors.brown,
+      Colors.blueGrey,
+    ];
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Category' : 'Add Category'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Category Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+                Text('Icon', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: predefinedIcons.map((icon) {
+                      final isSelected = selectedIcon == icon;
+                      return InkWell(
+                        onTap: () {
+                          setDialogState(() {
+                            selectedIcon = icon;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? selectedColor.withOpacity(0.2)
+                                : null,
+                            border: Border.all(
+                              color: isSelected ? selectedColor : Colors.grey,
+                              width: isSelected ? 2 : 1,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            icon,
+                            color: isSelected
+                                ? selectedColor
+                                : Colors.grey[600],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('Color', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: predefinedColors.map((color) {
+                      final isSelected = selectedColor == color;
+                      return InkWell(
+                        onTap: () {
+                          setDialogState(() {
+                            selectedColor = color;
+                          });
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected ? Colors.black : Colors.grey,
+                              width: isSelected ? 3 : 1,
+                            ),
+                          ),
+                          child: isSelected
+                              ? const Icon(Icons.check, color: Colors.white)
+                              : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Category name is required'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                final newCategory = Category(
+                  id:
+                      category?.id ??
+                      DateTime.now().millisecondsSinceEpoch.toString(),
+                  name: nameController.text.trim(),
+                  description: descriptionController.text.trim(),
+                  icon: selectedIcon,
+                  color: selectedColor,
+                  createdAt: category?.createdAt ?? DateTime.now(),
+                  updatedAt: DateTime.now(),
+                );
+
+                try {
+                  final catalogProvider = context.read<CatalogProvider>();
+                  if (isEdit) {
+                    await catalogProvider.updateCategory(newCategory);
+                  } else {
+                    await catalogProvider.addCategory(newCategory);
+                  }
+
+                  if (context.mounted) {
+                    Navigator.pop(context, true);
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error saving category: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEdit
+                  ? 'Category updated successfully'
+                  : 'Category added successfully',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteCategory(
+    CatalogProvider catalogProvider,
+    Category category,
+  ) async {
+    // Check if category is in use
+    final servicesUsingCategory = catalogProvider.services
+        .where((service) => service.categoryId == category.id)
+        .length;
+
+    if (servicesUsingCategory > 0) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cannot Delete Category'),
+          content: Text(
+            'This category is being used by $servicesUsingCategory service(s). '
+            'Please reassign or delete those services before deleting this category.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Category'),
+        content: Text('Are you sure you want to delete "${category.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await catalogProvider.deleteCategory(category.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${category.name} deleted successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting category: $e')),
+          );
         }
       }
     }

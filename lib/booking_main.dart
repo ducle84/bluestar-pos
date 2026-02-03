@@ -25,7 +25,7 @@ class BookingApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => ServiceOrderProvider()),
       ],
       child: MaterialApp(
-        title: 'CatEye Nail Salon - Book Appointment',
+        title: 'Bluestar POS - Book Appointment',
         theme: ThemeData(
           primarySwatch: Colors.blue,
           useMaterial3: true,

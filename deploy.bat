@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo CatEye POS - Firebase Deployment Script
+echo Bluestar POS - Firebase Deployment Script
 echo ========================================
 echo.
 

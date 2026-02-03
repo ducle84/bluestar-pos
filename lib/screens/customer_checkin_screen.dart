@@ -262,7 +262,7 @@ class _CustomerCheckinScreenState extends State<CustomerCheckinScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Welcome to CatEye POS',
+              'Welcome to Bluestar POS',
               style: TextStyle(
                 fontSize: isTablet ? 36 : 28,
                 fontWeight: FontWeight.bold,

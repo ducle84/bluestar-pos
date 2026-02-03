@@ -23,7 +23,7 @@ class CheckinKioskApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CatEye POS - Customer Check-in Kiosk',
+      title: 'Bluestar POS - Customer Check-in Kiosk',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
@@ -110,7 +110,7 @@ class KioskHomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'CatEye POS',
+                        'Bluestar POS',
                         style: TextStyle(
                           fontSize: isTablet ? 48 : 36,
                           fontWeight: FontWeight.bold,

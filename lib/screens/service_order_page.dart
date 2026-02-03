@@ -179,10 +179,10 @@ class _ServiceOrderPageState extends State<ServiceOrderPage> {
                         child: GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
-                                childAspectRatio: 1.2,
+                                crossAxisCount: 6,
+                                crossAxisSpacing: 4,
+                                mainAxisSpacing: 4,
+                                childAspectRatio: 2.0,
                               ),
                           itemCount: catalogProvider.filteredServices.length,
                           itemBuilder: (context, index) {
@@ -335,54 +335,54 @@ class _ServiceOrderPageState extends State<ServiceOrderPage> {
             _addServiceImmediately(service, orderProvider, catalogProvider),
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+          padding: const EdgeInsets.all(6),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Calculate responsive font sizes based on available space
+              final double baseFontSize = constraints.maxWidth * 0.12;
+              final double priceFontSize = baseFontSize.clamp(12.0, 30.0);
+              final double nameFontSize = (baseFontSize * 0.9).clamp(
+                10.0,
+                26.0,
+              );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.content_cut,
-                      color: Colors.blue.shade700,
-                      size: 16,
+                  // Price at top center
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '\$${service.price.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: priceFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
                     ),
                   ),
-                  const Spacer(),
-                  Text(
-                    '\$${service.price.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
+                  // Service name
+                  Expanded(
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          service.name,
+                          style: TextStyle(
+                            fontSize: nameFontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                service.name,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              if (service.description.isNotEmpty)
-                Text(
-                  service.description,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-            ],
+              );
+            },
           ),
         ),
       ),

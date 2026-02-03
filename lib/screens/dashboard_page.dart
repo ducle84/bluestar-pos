@@ -42,7 +42,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CatEye POS'),
+        title: const Text('Bluestar'),
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
       ),
@@ -65,7 +65,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   Icon(Icons.store, size: 48, color: Colors.white),
                   SizedBox(height: 8),
                   Text(
-                    'CatEye POS',
+                    'Bluestar',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -445,7 +445,7 @@ class _HomeContentState extends State<_HomeContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Welcome to CatEye POS!',
+            'Welcome to Bluestar POS!',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,

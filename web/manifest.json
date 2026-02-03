@@ -1,11 +1,11 @@
 {
-    "name": "CatEye POS - Nail Salon Management",
-    "short_name": "CatEye POS",
+    "name": "Bluestar POS - Salon Management",
+    "short_name": "Bluestar POS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Professional Point of Sale system for nail salons with appointment booking, customer management, and reporting.",
+    "description": "Professional Point of Sale system for salons with appointment booking, customer management, and reporting.",
     "orientation": "landscape-primary",
     "prefer_related_applications": false,
     "icons": [

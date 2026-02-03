@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CatalogProvider()),
       ],
       child: MaterialApp(
-        title: 'Cateye POS',
+        title: 'Bluestar POS',
         theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
         home: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
